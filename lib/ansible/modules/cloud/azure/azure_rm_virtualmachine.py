@@ -609,7 +609,7 @@ try:
         StorageProfile, OSProfile, OSDisk, DataDisk, \
         VirtualHardDisk, ManagedDiskParameters, \
         ImageReference, NetworkProfile, LinuxConfiguration, \
-        SshConfiguration, SshPublicKey, VirtualMachineSizeTypes, \
+        SshConfiguration, SshPublicKey, \
         DiskCreateOptionTypes, Plan, SubResource
     from azure.mgmt.network.models import PublicIPAddress, NetworkSecurityGroup, NetworkInterface, \
         NetworkInterfaceIPConfiguration, Subnet

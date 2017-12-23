@@ -340,36 +340,30 @@ azure_vmss:
 '''  # NOQA
 
 import base64
-import random
-import re
 
 try:
     from msrestazure.azure_exceptions import CloudError
     from msrestazure.tools import parse_resource_id
-    from azure.mgmt.compute.models import VirtualMachineScaleSet, \
-        VirtualMachineScaleSetStorageProfile, \
-        VirtualMachineScaleSetOSProfile, \
-        VirtualMachineScaleSetOSDisk, VirtualMachineScaleSetDataDisk, \
+    from azure.mgmt.compute.models import \
+        ApiEntityReference, ImageReference, SubResource, \
+        DiskCreateOptionTypes, CachingTypes, \
+        Sku, \
+        SshConfiguration, SshPublicKey, \
+        UpgradePolicy, VirtualMachineScaleSetNetworkConfiguration, \
+        VirtualMachineScaleSetIPConfiguration, \
         VirtualMachineScaleSetManagedDiskParameters, \
         VirtualMachineScaleSetNetworkProfile, LinuxConfiguration, \
-        SshConfiguration, SshPublicKey, VirtualMachineSizeTypes, \
-        DiskCreateOptionTypes, CachingTypes, \
-        VirtualMachineScaleSetVMProfile, VirtualMachineScaleSetIdentity, \
-        VirtualMachineScaleSetIPConfiguration, \
-        VirtualMachineScaleSetPublicIPAddressConfigurationDnsSettings, \
-        VirtualMachineScaleSetPublicIPAddressConfiguration, Sku, \
-        UpgradePolicy, VirtualMachineScaleSetNetworkConfiguration, \
-        ApiEntityReference, ImageReference, SubResource
-
-    from azure.mgmt.network.models import PublicIPAddress, \
-        NetworkSecurityGroup, NetworkInterface, \
-        NetworkInterfaceIPConfiguration, Subnet, VirtualNetwork
+        VirtualMachineScaleSetOSDisk, VirtualMachineScaleSetDataDisk, \
+        VirtualMachineScaleSetOSProfile, \
+        VirtualMachineScaleSetStorageProfile, \
+        VirtualMachineScaleSetVMProfile, \
+        VirtualMachineScaleSet
 
 except ImportError:
     # This is handled in azure_rm_common
     pass
 
-from ansible.module_utils.azure_rm_common import AzureRMModuleBase, azure_id_to_dict
+from ansible.module_utils.azure_rm_common import AzureRMModuleBase
 
 
 AZURE_OBJECT_CLASS = 'VirtualMachineScaleSet'
@@ -457,10 +451,8 @@ class AzureRMVirtualMachineScaleSet(AzureRMModuleBase):
         vmss = None
         disable_ssh_password = None
         vmss_dict = None
-        virtual_network = None
         subnet = None
         image_reference = None
-        custom_image = False
 
         resource_group = self.get_resource_group(self.resource_group)
         if not self.location:
@@ -501,14 +493,12 @@ class AzureRMVirtualMachineScaleSet(AzureRMModuleBase):
                         version=self.image['version']
                     )
                 elif self.image.get('name'):
-                    custom_image = True
                     image_reference = self.get_custom_image_reference(
                         self.image.get('name'),
                         self.image.get('resource_group'))
                 else:
                     self.fail("parameter error: expecting image to contain [publisher, offer, sku, version] or [name, resource_group]")
             elif self.image and isinstance(self.image, str):
-                custom_image = True
                 image_reference = self.get_custom_image_reference(self.image)
             elif self.image:
                 self.fail("parameter error: expecting image to be a string or dict not {0}".format(type(self.image).__name__))
@@ -586,7 +576,6 @@ class AzureRMVirtualMachineScaleSet(AzureRMModuleBase):
 
                     if not self.virtual_network_name:
                         default_vnet = self.create_default_vnet()
-                        virtual_network = default_vnet.id
                         self.virtual_network_name = default_vnet.name
 
                     if self.subnet_name:
@@ -722,11 +711,6 @@ class AzureRMVirtualMachineScaleSet(AzureRMModuleBase):
                             ),
                         ))
                     vmss_resource.virtual_machine_profile.storage_profile.data_disks = data_disks
-
-                    # Add custom_data, if provided
-                    if vm_dict['properties']['osProfile'].get('customData'):
-                        custom_data = vm_dict['properties']['osProfile']['customData']
-                        vm_resource.os_profile.custom_data = str(base64.b64encode(custom_data.encode()).decode('utf-8'))
 
                     self.log("Update virtual machine with parameters:")
                     self.create_or_update_vmss(vmss_resource)
@@ -874,6 +858,7 @@ class AzureRMVirtualMachineScaleSet(AzureRMModuleBase):
 
 def main():
     AzureRMVirtualMachineScaleSet()
+
 
 if __name__ == '__main__':
     main()
