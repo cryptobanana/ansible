@@ -56,6 +56,12 @@ options:
         description:
             - Capacity of VMSS.
         required: true
+    custom_data:
+        description:
+            - Data which is made available to the virtual machine and used by e.g., cloud-init.
+        default: null
+        required: false
+        version_added: "2.5"
     tier:
         description:
             - SKU Tier.
@@ -333,6 +339,7 @@ azure_vmss:
     }
 '''  # NOQA
 
+import base64
 import random
 import re
 
@@ -383,6 +390,7 @@ class AzureRMVirtualMachineScaleSet(AzureRMModuleBase):
             vm_size=dict(type='str', required=True),
             tier=dict(type='str', choices=['Basic', 'Standard']),
             capacity=dict(type='int', default=1),
+            custom_data=dict(type='str'),
             upgrade_policy=dict(type='str', choices=['Automatic', 'Manual']),
             admin_username=dict(type='str'),
             admin_password=dict(type='str', no_log=True),
@@ -407,6 +415,7 @@ class AzureRMVirtualMachineScaleSet(AzureRMModuleBase):
         self.short_hostname = None
         self.vm_size = None
         self.capacity = None
+        self.custom_data = None
         self.tier = None
         self.upgrade_policy = None
         self.admin_username = None
@@ -651,6 +660,11 @@ class AzureRMVirtualMachineScaleSet(AzureRMModuleBase):
                     if self.admin_password:
                         vmss_resource.virtual_machine_profile.os_profile.admin_password = self.admin_password
 
+                    if self.custom_data:
+                        vmss_resource.virtual_machine_profile.os_profile.custom_data = str(
+                            base64.b64encode(self.custom_data.encode()).decode('utf-8')
+                        )
+
                     if self.os_type == 'Linux':
                         vmss_resource.virtual_machine_profile.os_profile.linux_configuration = LinuxConfiguration(
                             disable_password_authentication=disable_ssh_password
@@ -708,6 +722,11 @@ class AzureRMVirtualMachineScaleSet(AzureRMModuleBase):
                             ),
                         ))
                     vmss_resource.virtual_machine_profile.storage_profile.data_disks = data_disks
+
+                    # Add custom_data, if provided
+                    if vm_dict['properties']['osProfile'].get('customData'):
+                        custom_data = vm_dict['properties']['osProfile']['customData']
+                        vm_resource.os_profile.custom_data = str(base64.b64encode(custom_data.encode()).decode('utf-8'))
 
                     self.log("Update virtual machine with parameters:")
                     self.create_or_update_vmss(vmss_resource)
